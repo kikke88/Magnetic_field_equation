@@ -29,6 +29,8 @@ struct Task_features {
 	const ptrdiff_t INDEX_LEFT, INDEX_RIGHT;
 	const double RANGE_LEFT, RANGE_RIGHT;
 	const ptrdiff_t alloc_local, local_n0, local_0_start;
+	ptrdiff_t *indeces;
+
 	Task_features(  const ptrdiff_t N_,
 					const double rng_left_, const double rng_right_,
 					const ptrdiff_t alloc_local_, const ptrdiff_t local_n0_, const ptrdiff_t local_0_start_):
@@ -36,16 +38,21 @@ struct Task_features {
 					INDEX_LEFT{-N / 2 + 1}, INDEX_RIGHT{N / 2 + 1}, //  [left, right)
 					RANGE_LEFT{rng_left_}, RANGE_RIGHT{rng_right_},
 					alloc_local{alloc_local_}, local_n0{local_n0_}, local_0_start{local_0_start_}
-	{}
+	{
+		indeces = new ptrdiff_t[N];
+		for (ptrdiff_t i = 0; i <= N / 2; ++i) {
+			indeces[i] = i;
+		}
+		for (ptrdiff_t i = N / 2 + 1; i < N; ++i) {
+			indeces[i] = i - N;
+		}
+	}
+
+	~Task_features() {
+		delete[] indeces;
+	}
 };
 
-ptrdiff_t right_index(const ptrdiff_t idx, const ptrdiff_t N) {
-	if (idx <= N / 2) {
-		return idx;
-	} else {
-		return idx - N;
-	}
-}
 
 void derivative_of_function(fftw_complex* ptr, const Task_features& info, const int num_of_dimension) {
 	double coef;
@@ -55,16 +62,12 @@ void derivative_of_function(fftw_complex* ptr, const Task_features& info, const 
 				std::swap(	ptr[(i * info.N + j) * (info.N / 2 + 1) + k][0],
 							ptr[(i * info.N + j) * (info.N / 2 + 1) + k][1]);
 				if (num_of_dimension == 0) {
-					coef = right_index(info.local_0_start + i, info.N);
+					coef = info.indeces[info.local_0_start + i];
 				} else if (num_of_dimension == 1) {
-					coef = right_index(j, info.N);
+					coef = info.indeces[j];
 				} else if (num_of_dimension == 2) {
-					coef = info.INDEX_LEFT + k;
-				} else {
-					std::cerr << "AVOST" << '\n';
-					exit(1);
+					coef = k;
 				}
-				std::cout << coef << '|' << '\n';
 				ptr[(i * info.N + j) * (info.N / 2 + 1) + k][0] *= -coef;
 				ptr[(i * info.N + j) * (info.N / 2 + 1) + k][1] *=  coef;
 			}
@@ -73,7 +76,48 @@ void derivative_of_function(fftw_complex* ptr, const Task_features& info, const 
 	return;
 }
 
-fftw_complex divergence(fftw_complex *ptr_1, fftw_complex *ptr_2, fftw_complex *ptr_3, ptrdiff_t )////
+//fftw_complex divergence(fftw_complex *ptr_1, fftw_complex *ptr_2, fftw_complex *ptr_3, ptrdiff_t )////
+
+void cross_product_func(double *cross_product,
+						const double *v_f_l, const double *v_f_r,
+						const double *m_f_l, const double *m_f_r,
+						const Task_features& info) { // i/j/k * (v_f_l * m_f_l - v_f_r * m_f_r)
+	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+		for (ptrdiff_t j = 0; j < info.N; ++j) {
+			for (ptrdiff_t k = 0; k < info.N; ++k) {
+				const ptrdiff_t idx = (i * info.N + j) * (2 * (info.N / 2 + 1)) + k;
+				cross_product[idx] = v_f_l[idx] * m_f_l[idx] - v_f_r[idx] * m_f_r[idx];
+			}
+		}
+	}
+	return;
+}
+
+void rotor(	fftw_complex *rot,
+			const fftw_complex *cross_p_l, const fftw_complex *cross_p_r,
+			const Task_features& info, const int num_of_dimension) {
+	double coef_l, coef_r;
+	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+		for (ptrdiff_t j = 0; j < info.N; ++j) {
+			for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) { //  [0, N/2 + 1)
+				const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
+				if (num_of_dimension == 0) {
+					coef_l = info.indeces[j];
+					coef_r = k;
+				} else if (num_of_dimension == 1) {
+					coef_l = k
+					coef_r = info.indeces[info.local_0_start + i];
+				} else if (num_of_dimension == 2) {
+					coef_l = info.indeces[info.local_0_start + i];
+					coef_r = info.indeces[j];
+				}
+				rot[idx][0] = -cross_p_l[idx][1] * coef_l + cross_p_r[idx][1] * coef_r;
+				rot[idx][1] =  cross_p_l[idx][0] * coef_l - cross_p_r[idx][0] * coef_r;
+			}
+		}
+	}
+	return;
+}
 
 int main(int argc, char *argv[]) {
 	const int power_of_two = 1;
