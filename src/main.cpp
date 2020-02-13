@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <utility>
+#include <cstdlib>
 
 
 #include <fftw3-mpi.h>
@@ -29,17 +30,19 @@ struct Task_features {
 	const ptrdiff_t INDEX_LEFT, INDEX_RIGHT;
 	const double RANGE_LEFT, RANGE_RIGHT;
 	const ptrdiff_t alloc_local, local_n0, local_0_start;
-	ptrdiff_t *indeces;
+	double *indeces;
+	int rank, size;
 
 	Task_features(  const ptrdiff_t N_,
 					const double rng_left_, const double rng_right_,
-					const ptrdiff_t alloc_local_, const ptrdiff_t local_n0_, const ptrdiff_t local_0_start_):
+					const ptrdiff_t alloc_local_, const ptrdiff_t local_n0_, const ptrdiff_t local_0_start_,
+					const int rank_, const int size_):
 					N{N_},
 					INDEX_LEFT{-N / 2 + 1}, INDEX_RIGHT{N / 2 + 1}, //  [left, right)
 					RANGE_LEFT{rng_left_}, RANGE_RIGHT{rng_right_},
-					alloc_local{alloc_local_}, local_n0{local_n0_}, local_0_start{local_0_start_}
-	{
-		indeces = new ptrdiff_t[N];
+					alloc_local{alloc_local_}, local_n0{local_n0_}, local_0_start{local_0_start_},
+					rank{rank_}, size{size_} {
+		indeces = new double[N];
 		for (ptrdiff_t i = 0; i <= N / 2; ++i) {
 			indeces[i] = i;
 		}
@@ -154,7 +157,8 @@ double field_energy_phi(const double *ptr_1,
 			}
 		}
 	}
-	return energy / 2;
+	energy /= 2;
+	return energy;
 }
 
 auto field_energy_fourie(	const fftw_complex *ptr_1,
@@ -185,7 +189,8 @@ auto field_energy_fourie(	const fftw_complex *ptr_1,
 	return std::make_pair(energy_real, energy_imag);
 }
 
-void correction(fftw_complex *result_ptr_1, fftw_complex *result_ptr_2, fftw_complex *result_ptr_3, fftw_complex *tmp_ptr, const Task_features& info) {
+void correction(fftw_complex *result_ptr_1, fftw_complex *result_ptr_2, fftw_complex *result_ptr_3,
+				fftw_complex *tmp_ptr, const Task_features& info) {
 	divergence(tmp_ptr, result_ptr_1, result_ptr_2, result_ptr_3, info);
 	double coef_1, coef_2, coef_3;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
@@ -200,20 +205,44 @@ void correction(fftw_complex *result_ptr_1, fftw_complex *result_ptr_2, fftw_com
 					result_ptr_2[idx][0] = 0, result_ptr_2[idx][1] = 0,
 					result_ptr_3[idx][0] = 0, result_ptr_3[idx][1] = 0;
 				} else {
-					result_ptr_1[idx][0] = result_ptr_1[idx][0] + coef_1 * tmp_ptr[idx][1];
-					result_ptr_1[idx][1] = result_ptr_1[idx][1] - coef_1 * tmp_ptr[idx][0];
-					result_ptr_2[idx][0] = result_ptr_2[idx][0] + coef_2 * tmp_ptr[idx][1];
-					result_ptr_2[idx][1] = result_ptr_1[idx][1] - coef_2 * tmp_ptr[idx][0];
-					result_ptr_3[idx][0] = result_ptr_3[idx][0] + coef_3 * tmp_ptr[idx][1];
-					result_ptr_3[idx][1] = result_ptr_1[idx][1] - coef_3 * tmp_ptr[idx][0];
+					double sum_coef = -(coef_1 * coef_1 + coef_2 * coef_2 + coef_3 * coef_3);
+					result_ptr_1[idx][0] = result_ptr_1[idx][0] + coef_1 * tmp_ptr[idx][1] / sum_coef;
+					result_ptr_1[idx][1] = result_ptr_1[idx][1] - coef_1 * tmp_ptr[idx][0] / sum_coef;
+					result_ptr_2[idx][0] = result_ptr_2[idx][0] + coef_2 * tmp_ptr[idx][1] / sum_coef;
+					result_ptr_2[idx][1] = result_ptr_1[idx][1] - coef_2 * tmp_ptr[idx][0] / sum_coef;
+					result_ptr_3[idx][0] = result_ptr_3[idx][0] + coef_3 * tmp_ptr[idx][1] / sum_coef;
+					result_ptr_3[idx][1] = result_ptr_1[idx][1] - coef_3 * tmp_ptr[idx][0] / sum_coef;
 				}
 			}
 		}
 	}
 	return;
 }
+
+void output_of_large_abs_value_fourie_coef(	const fftw_complex *ptr,
+											const Task_features& info,
+											const double abs_value) {
+	for (int rnk = 0; rnk < info.size; ++rnk) {
+		MPI_Barrier(MPI_COMM_WORLD);
+		if (info.rank == rnk) {
+			for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+				for (ptrdiff_t j = 0; j < info.N; ++j) {
+					for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) {
+						const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
+						if (std::sqrt(ptr[idx][0] * ptr[idx][0] + ptr[idx][1] * ptr[idx][1]) > abs_value) {
+							std::cout << "rank: " << rnk << " , idx: " << idx << " , value: " << ptr[idx][0] << ' ' << ptr[idx][1] << '\n';
+						}
+					}
+				}
+			}
+		}
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
+	return;
+}
+
 int main(int argc, char *argv[]) {
-	const int power_of_two = 1;
+	const int power_of_two = std::atoi(argv[1]);
 	const ptrdiff_t N = 1 << power_of_two;
 
 	fftw_plan forward_plan, backward_plan;
@@ -232,11 +261,15 @@ int main(int argc, char *argv[]) {
 					*intermediate_field;
 */
 	MPI_Init(&argc, &argv);
+	int rank, size;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	fftw_mpi_init();
+
 
 	alloc_local = fftw_mpi_local_size_3d(N, N, N / 2 + 1, MPI_COMM_WORLD, &local_n0, &local_0_start);
 
-	const Task_features info{N, 0, std::acos(-1) * 2, alloc_local, local_n0, local_0_start};
+	const Task_features info{N, 0, std::acos(-1) * 2, alloc_local, local_n0, local_0_start, rank, size};
 
 	rin = fftw_alloc_real(2 * alloc_local);
 	cout = fftw_alloc_complex(alloc_local);
@@ -257,18 +290,18 @@ int main(int argc, char *argv[]) {
 	std::cout << 'p' << '\n';
 	std::cout << field_energy_phi(rin, rin, rin, info) << '\n';
 	fftw_execute(forward_plan);
-	// for (i = 0; i < local_n0; ++i)
-	// 	for (j = 0; j < N; ++j)
-	// 		for (k = 0; k < N; ++k)
-	// 			cout[(i * N + j) * (N / 2 + 1) + k][0] /= 2 * std::sqrt(2);
-	// 			cout[(i * N + j) * (N / 2 + 1) + k][1] /= 2 * std::sqrt(2);
+	for (i = 0; i < local_n0; ++i)
+		for (j = 0; j < N; ++j)
+			for (k = 0; k < (N / 2 + 1); ++k)
+				cout[(i * N + j) * (N / 2 + 1) + k][0] /= N * std::sqrt(N);
+				cout[(i * N + j) * (N / 2 + 1) + k][1] /= N * std::sqrt(N);
 
-	const auto[real, imag] = field_energy_fourie(cout, cout, cout, info);
+	const auto [real, imag] = field_energy_fourie(cout, cout, cout, info);
 	std::cout << "f" << '\n';
 	std::cout << real << ' ' << imag << '\n';
 	for (i = 0; i < local_n0; ++i)
 		for (j = 0; j < N; ++j)
-			for (k = 0; k < N; ++k)
+			for (k = 0; k < (N / 2 + 1); ++k)
 				std::cout << cout[(i * N + j) * (N / 2 + 1) + k][0] << ' ' << cout[(i * N + j) * (N / 2 + 1) + k][1] << std::endl;
 	//derivative_of_function(cout, info, 0);
 
@@ -276,7 +309,7 @@ int main(int argc, char *argv[]) {
 	for (i = 0; i < local_n0; ++i)
 		for (j = 0; j < N; ++j)
 			for (k = 0; k < N; ++k)
-				rin[(i * N + j) * (2 * (N / 2 + 1)) + k] /= 8;
+				rin[(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * sqrt(N);
 
 	std::cout << field_energy_phi(rin, rin, rin, info) << '\n';
 
