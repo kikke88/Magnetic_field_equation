@@ -1,15 +1,15 @@
-OPT=			-O2 -std=c++1z
-FFTW_FLAGS = 	-lfftw3_mpi -lfftw3 -lm
+OPT 		=	-O2 -std=c++1z
+FFTW_FLAGS 	=	-lfftw3_mpi -lfftw3 -lm
 
-all: main
+all: task1
 
-main: bin/main
+task1: bin/task1
 
-bin/main: build/main.o Makefile
+bin/task1: build/task1.o Makefile
 	mkdir -p bin
 	mpic++ -o $@ $(OPT) $< $(FFTW_FLAGS)
 
-build/main.o: src/main.cpp Makefile
+build/task1.o: src/task1.cpp Makefile
 	mkdir -p build
 	mpic++ -o $@ $(OPT) -c $< $(FFTW_FLAGS)
 

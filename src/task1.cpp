@@ -5,10 +5,11 @@
 #include <cstdlib>
 #include <vector>
 #include <functional>
-
+#include <chrono>
 
 #include <fftw3-mpi.h>
 
+const double EPSILON = 1e-10;
 
 struct Task_features {
 	const ptrdiff_t N;
@@ -64,7 +65,7 @@ void derivative_of_function(fftw_complex* ptr, const Task_features& info, const 
 	return;
 }
 
-
+/*
 void cross_product_func(double *cross_product,
 						const double *v_f_l, const double *v_f_r,
 						const double *m_f_l, const double *m_f_r,
@@ -79,6 +80,7 @@ void cross_product_func(double *cross_product,
 	}
 	return;
 }
+*/
 
 void rotor(	fftw_complex *rot,
 			const fftw_complex *cross_p_l, const fftw_complex *cross_p_r,
@@ -246,71 +248,17 @@ void fill_real(double* vec[3], const Task_features& info) {
 	return;
 }
 
-
-int main(int argc, char *argv[]) {
-/*
-	double 	*magnetic_field_1_real, *magnetic_field_2_real, *magnetic_field_3_real,
-			*velocity_field_1_real, *velocity_field_2_real, *velocity_field_3_real,
-			*cross_product_1_real, 	*cross_product_2_real, 	*cross_product_3_real;
-
-	fftw_complex 	*magnetic_field_1_complex, 	*magnetic_field_2_complex, 	*magnetic_field_3_complex,
-					*velocity_field_1_complex, 	*velocity_field_2_complex, 	*velocity_field_3_complex,
-					*cross_product_1_complex,	*cross_product_2_complex, 	*cross_product_3_complex,
-					*rotor_1_complex,			*rotor_2_complex,			*rotor_3_complex,
-					*intermediate_field;
-*/
-//  Task1
-	const int power_of_two = std::atoi(argv[1]);
-	const ptrdiff_t N = 1 << power_of_two;
-
-	MPI_Init(&argc, &argv);
-	int rank, size;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	fftw_mpi_init();
-
+void test_derivative(const Task_features& info) {
+	const ptrdiff_t N = info.N;
 	fftw_plan forward_plan[3], backward_plan[3];
 	double* vec_r[3];
 	fftw_complex* vec_c[3];
-	ptrdiff_t alloc_local, local_n0, local_0_start;
-	alloc_local = fftw_mpi_local_size_3d(N, N, N / 2 + 1, MPI_COMM_WORLD, &local_n0, &local_0_start);
-
-	const Task_features info{N, 0, std::acos(-1) * 2, alloc_local, local_n0, local_0_start, rank, size};
-
 	for (int q = 0; q < 3; ++q) {
-		vec_r[q] = fftw_alloc_real(2 * alloc_local);
-		vec_c[q] = fftw_alloc_complex(alloc_local);
+		vec_r[q] = fftw_alloc_real(2 * info.alloc_local);
+		vec_c[q] = fftw_alloc_complex(info.alloc_local);
 		forward_plan[q]  = fftw_mpi_plan_dft_r2c_3d(N, N, N, vec_r[q], vec_c[q], MPI_COMM_WORLD, FFTW_MEASURE);
 		backward_plan[q] = fftw_mpi_plan_dft_c2r_3d(N, N, N, vec_c[q], vec_r[q], MPI_COMM_WORLD, FFTW_MEASURE);
 	}
-
-	fill_real(vec_r, info);
-	std::cout << 'p' << '\n';
-	std::cout << field_energy_phi(vec_r[0], vec_r[1], vec_r[2], info) << '\n';
-	fftw_execute(forward_plan[0]);
-	fftw_execute(forward_plan[1]);
-	fftw_execute(forward_plan[2]);
-
-	for (int q = 0; q < 3; ++q)
-		for (ptrdiff_t i = 0; i < local_n0; ++i)
-			for (ptrdiff_t j = 0; j < N; ++j)
-				for (ptrdiff_t k = 0; k < (N / 2 + 1); ++k) {
-					vec_c[q][(i * N + j) * (N / 2 + 1) + k][0] /= N * std::sqrt(N);
-					vec_c[q][(i * N + j) * (N / 2 + 1) + k][1] /= N * std::sqrt(N);
-				}
-
-	//const auto [real, imag] = field_energy_fourie(vec_c[0], vec_c[1], vec_c[2], info);
-	std::cout << "f" << '\n';
-	//std::cout << real << ' ' << imag << '\n';
-	std::cout << field_energy_fourie(vec_c[0], vec_c[1], vec_c[2], info) << '\n';
-	// for (int q = 0; q < 3; ++q) {
-	// 	std::cout << "##" << std::endl;
-	// 	for (ptrdiff_t i = 0; i < local_n0; ++i)
-	// 		for (ptrdiff_t j = 0; j < N; ++j)
-	// 			for (ptrdiff_t k = 0; k < (N / 2 + 1); ++k)
-	// 				std::cout << vec_c[q][(i * N + j) * (N / 2 + 1) + k][0] << ' ' << vec_c[q][(i * N + j) * (N / 2 + 1) + k][1] << std::endl;
-	// }
-	/*
 	std::vector<std::vector<std::function<double(const double, const double, const double)>>> fill_real_derived_function(3);
 	fill_real_derived_function[0].push_back([](const double x1, const double x2, const double x3) {
 		return std::cos(1 * x1 - 2 * x2 + 3 * x3);
@@ -334,88 +282,52 @@ int main(int argc, char *argv[]) {
 		return -3 * std::cos(-3 * x1 - x2 + x3);
 	});
 	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
-		return -1 * std::cos(-3 * x1 - x2 + x3);
+		return -std::cos(-3 * x1 - x2 + x3);
 	});
 	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
 		return std::cos(-3 * x1 - x2 + x3);
 	});
+	for (int num = 0; num < 3; ++num) {
+		std::cout << num << '\n';
+		fill_real(vec_r, info);
+		fftw_execute(forward_plan[0]);
+		fftw_execute(forward_plan[1]);
+		fftw_execute(forward_plan[2]);
 
-	derivative_of_function(vec_c[0], info, 0);
-	derivative_of_function(vec_c[1], info, 0);
-	derivative_of_function(vec_c[2], info, 0);
+		derivative_of_function(vec_c[0], info, num);
+		derivative_of_function(vec_c[1], info, num);
+		derivative_of_function(vec_c[2], info, num);
 
-	fftw_execute(backward_plan[0]);
-	fftw_execute(backward_plan[1]);
-	fftw_execute(backward_plan[2]);
+		fftw_execute(backward_plan[0]);
+		fftw_execute(backward_plan[1]);
+		fftw_execute(backward_plan[2]);
 
-	for (int q = 0; q < 3; ++q)
-		for (ptrdiff_t i = 0; i < info.local_n0; ++i)
-			for (ptrdiff_t j = 0; j < info.N; ++j)
-				for (ptrdiff_t k = 0; k < info.N; ++k)
-	                vec_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * sqrt(N);
-
-	for (int q = 0; q < 3; ++q)
-		for (ptrdiff_t i = 0; i < info.local_n0; ++i)
-			for (ptrdiff_t j = 0; j < info.N; ++j)
-				for (ptrdiff_t k = 0; k < info.N; ++k) {
-	                const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
-	                const double cur_y = info.RANGE_RIGHT * j / info.N;
-	                const double cur_z = info.RANGE_RIGHT * k / info.N;
-					const double diff = std::abs(vec_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - fill_real_derived_function[q][0](cur_x, cur_y, cur_z));
-	                if (diff > 1e-10) {
-						std::cout << i << j << k << std::endl;
+		for (int q = 0; q < 3; ++q) {
+			for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+				for (ptrdiff_t j = 0; j < info.N; ++j) {
+					for (ptrdiff_t k = 0; k < info.N; ++k) {
+						vec_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * N * N;
 					}
-	            }
-*/
+				}
+			}
+		}
 
-
-
-	std::vector<std::function<double(const double, const double, const double)>> rotor_functions;
-	rotor_functions.push_back([](const double x1, const double x2, const double x3) {
-		return -std::cos(-3 * x1 - x2 + x3) + std::sin(-x1 - x3);
-	});
-	rotor_functions.push_back([](const double x1, const double x2, const double x3) {
-		return 3 * std::cos(x1 - 2 * x2 + 3 * x3) + 3 * std::cos(-3 * x1 - x2 + x3);
-	});
-	rotor_functions.push_back([](const double x1, const double x2, const double x3) {
-		return std::sin(-x1 - x3) + 2 * std::cos(x1 - 2 * x2 + 3 * x3);
-	});
-	fftw_complex *rotor_c[3];
-	double* rotor_r[3];
-	fftw_plan rot_c_to_r[3];
-	for (int q = 0; q < 3; ++q) {
-		rotor_r[q] = fftw_alloc_real(2 * alloc_local);
-		rotor_c[q] = fftw_alloc_complex(alloc_local);
-		rot_c_to_r[q] = fftw_mpi_plan_dft_c2r_3d(N, N, N, rotor_c[q], rotor_r[q], MPI_COMM_WORLD, FFTW_MEASURE);
+		for (int q = 0; q < 3; ++q) {
+			for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+				for (ptrdiff_t j = 0; j < info.N; ++j) {
+					for (ptrdiff_t k = 0; k < info.N; ++k) {
+						const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
+						const double cur_y = info.RANGE_RIGHT * j / info.N;
+						const double cur_z = info.RANGE_RIGHT * k / info.N;
+						const double diff = std::abs(vec_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - fill_real_derived_function[q][num](cur_x, cur_y, cur_z));
+						if (diff > EPSILON) {
+							std::cout << info.rank << ' ' << i << ' ' << j << ' ' << k << std::endl;
+						}
+					}
+				}
+			}
+		}
 	}
-
-	rotor(rotor_c[0], vec_c[2], vec_c[1], info, 0);
-	rotor(rotor_c[1], vec_c[0], vec_c[2], info, 1);
-	rotor(rotor_c[2], vec_c[1], vec_c[0], info, 2);
-
-	fftw_execute(rot_c_to_r[0]);
-	fftw_execute(rot_c_to_r[1]);
-	fftw_execute(rot_c_to_r[2]);
-
-	for (int q = 0; q < 3; ++q)
-		for (ptrdiff_t i = 0; i < info.local_n0; ++i)
-			for (ptrdiff_t j = 0; j < info.N; ++j)
-				for (ptrdiff_t k = 0; k < info.N; ++k)
-	                rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * sqrt(N);
-
-	for (int q = 0; q < 3; ++q)
-		for (ptrdiff_t i = 0; i < info.local_n0; ++i)
-			for (ptrdiff_t j = 0; j < info.N; ++j)
-				for (ptrdiff_t k = 0; k < info.N; ++k) {
-	                const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
-	                const double cur_y = info.RANGE_RIGHT * j / info.N;
-	                const double cur_z = info.RANGE_RIGHT * k / info.N;
-					const double diff = std::abs(rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - rotor_functions[q](cur_x, cur_y, cur_z));
-	                if (diff > 1e-10) {
-						std::cout << diff << std::endl;
-					}
-	            }
-
 
 	for (int q = 0; q < 3; ++q) {
 		fftw_free(vec_r[q]);
@@ -424,8 +336,296 @@ int main(int argc, char *argv[]) {
 		fftw_destroy_plan(backward_plan[q]);
 	}
 
+	return;
+}
+
+void test_rotor(const Task_features& info) {
+	const ptrdiff_t N = info.N;
+	fftw_plan forward_plan[3];
+	double* vec_r[3];
+	fftw_complex* vec_c[3];
+	for (int q = 0; q < 3; ++q) {
+		vec_r[q] = fftw_alloc_real(2 * info.alloc_local);
+		vec_c[q] = fftw_alloc_complex(info.alloc_local);
+		forward_plan[q]  = fftw_mpi_plan_dft_r2c_3d(N, N, N, vec_r[q], vec_c[q], MPI_COMM_WORLD, FFTW_MEASURE);
+	}
+	fill_real(vec_r, info);
+
+	std::vector<std::function<double(const double, const double, const double)>> rotor_functions;
+	rotor_functions.push_back([](const double x1, const double x2, const double x3) {
+		return -std::cos(-3 * x1 - x2 + x3) - std::sin(-x1 - x3);
+	});
+	rotor_functions.push_back([](const double x1, const double x2, const double x3) {
+		return 3 * std::cos(x1 - 2 * x2 + 3 * x3) + 3 * std::cos(-3 * x1 - x2 + x3);
+	});
+	rotor_functions.push_back([](const double x1, const double x2, const double x3) {
+		return std::sin(-x1 - x3) + 2 * std::cos(x1 - 2 * x2 + 3 * x3);
+	});
+
+	fftw_complex *rotor_c[3];
+	double* rotor_r[3];
+	fftw_plan rot_c_to_r[3];
+	for (int q = 0; q < 3; ++q) {
+		rotor_r[q] = fftw_alloc_real(2 * info.alloc_local);
+		rotor_c[q] = fftw_alloc_complex(info.alloc_local);
+		rot_c_to_r[q] = fftw_mpi_plan_dft_c2r_3d(N, N, N, rotor_c[q], rotor_r[q], MPI_COMM_WORLD, FFTW_MEASURE);
+	}
+
+	fftw_execute(forward_plan[0]);
+	fftw_execute(forward_plan[1]);
+	fftw_execute(forward_plan[2]);
+
+	for (int q = 0; q < 3; ++q) {
+		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+			for (ptrdiff_t j = 0; j < info.N; ++j) {
+				for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) {
+					vec_c[q][(i * N + j) * (N / 2 + 1) + k][0] /= N * std::sqrt(N);
+					vec_c[q][(i * N + j) * (N / 2 + 1) + k][1] /= N * std::sqrt(N);
+				}
+			}
+		}
+	}
+
+	rotor(rotor_c[0], vec_c[2], vec_c[1], info, 0);
+	rotor(rotor_c[1], vec_c[0], vec_c[2], info, 1);
+	rotor(rotor_c[2], vec_c[1], vec_c[0], info, 2);
+
+	for (int q = 0; q < 3; ++q) {
+		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+			for (ptrdiff_t j = 0; j < info.N; ++j) {
+				for (ptrdiff_t k = 0; k < info.N; ++k) {
+					rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * std::sqrt(N);
+				}
+			}
+		}
+	}
+
+	fftw_execute(rot_c_to_r[0]);
+	fftw_execute(rot_c_to_r[1]);
+	fftw_execute(rot_c_to_r[2]);
+
+	for (int q = 0; q < 3; ++q) {
+		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+			for (ptrdiff_t j = 0; j < info.N; ++j) {
+				for (ptrdiff_t k = 0; k < info.N; ++k) {
+					rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * std::sqrt(N);
+				}
+			}
+		}
+	}
+
+	for (int q = 0; q < 3; ++q) {
+		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+			for (ptrdiff_t j = 0; j < info.N; ++j) {
+				for (ptrdiff_t k = 0; k < info.N; ++k) {
+					const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
+					const double cur_y = info.RANGE_RIGHT * j / info.N;
+					const double cur_z = info.RANGE_RIGHT * k / info.N;
+					const double diff = std::abs(rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - rotor_functions[q](cur_x, cur_y, cur_z));
+					if (diff > EPSILON) {
+						std::cout << info.rank << ' ' << i << ' ' << j << ' ' << k << std::endl;
+					}
+				}
+			}
+		}
+	}
+
+	for (int q = 0; q < 3; ++q) {
+		fftw_free(vec_r[q]);
+		fftw_free(vec_c[q]);
+		fftw_free(rotor_r[q]);
+		fftw_free(rotor_c[q]);
+		fftw_destroy_plan(rot_c_to_r[q]);
+		fftw_destroy_plan(forward_plan[q]);
+	}
+
+	return;
+}
+
+void test_divergence(const Task_features& info) {
+	const ptrdiff_t N = info.N;
+	fftw_plan forward_plan[3], backward_plan[3];
+	double* vec_r[3];
+	fftw_complex* vec_c[3];
+	for (int q = 0; q < 3; ++q) {
+		vec_r[q] = fftw_alloc_real(2 * info.alloc_local);
+		vec_c[q] = fftw_alloc_complex(info.alloc_local);
+		forward_plan[q]  = fftw_mpi_plan_dft_r2c_3d(N, N, N, vec_r[q], vec_c[q], MPI_COMM_WORLD, FFTW_MEASURE);
+		backward_plan[q] = fftw_mpi_plan_dft_c2r_3d(N, N, N, vec_c[q], vec_r[q], MPI_COMM_WORLD, FFTW_MEASURE);
+	}
+
+	std::vector<std::vector<std::function<double(const double, const double, const double)>>> fill_real_derived_function(3); // i - func num, j - var num
+	fill_real_derived_function[0].push_back([](const double x1, const double x2, const double x3) {
+		return std::cos(1 * x1 - 2 * x2 + 3 * x3);
+	});
+	fill_real_derived_function[0].push_back([](const double x1, const double x2, const double x3) {
+		return -2 * std::cos(1 * x1 - 2 * x2 + 3 * x3);
+	});
+	fill_real_derived_function[0].push_back([](const double x1, const double x2, const double x3) {
+		return 3 * std::cos(1 * x1 - 2 * x2 + 3 * x3);
+	});
+	fill_real_derived_function[1].push_back([](const double x1, const double x2, const double x3) {
+		return std::sin(-x1 - x3);
+	});
+	fill_real_derived_function[1].push_back([](const double x1, const double x2, const double x3) {
+		return 0;
+	});
+	fill_real_derived_function[1].push_back([](const double x1, const double x2, const double x3) {
+		return std::sin(-x1 - x3);
+	});
+	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
+		return -3 * std::cos(-3 * x1 - x2 + x3);
+	});
+	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
+		return -std::cos(-3 * x1 - x2 + x3);
+	});
+	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
+		return std::cos(-3 * x1 - x2 + x3);
+	});
+
+	fill_real(vec_r, info);
+
+	fftw_execute(forward_plan[0]);
+	fftw_execute(forward_plan[1]);
+	fftw_execute(forward_plan[2]);
+
+	derivative_of_function(vec_c[0], info, 0);
+	derivative_of_function(vec_c[1], info, 1);
+	derivative_of_function(vec_c[2], info, 2);
+
+	fftw_execute(backward_plan[0]);
+	fftw_execute(backward_plan[1]);
+	fftw_execute(backward_plan[2]);
+
+	for (int q = 0; q < 3; ++q) {
+		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+			for (ptrdiff_t j = 0; j < info.N; ++j) {
+				for (ptrdiff_t k = 0; k < info.N; ++k) {
+					vec_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * N * N;
+				}
+			}
+		}
+	}
+
+	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+		for (ptrdiff_t j = 0; j < info.N; ++j) {
+			for (ptrdiff_t k = 0; k < info.N; ++k) {
+				const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
+				const double cur_y = info.RANGE_RIGHT * j / info.N;
+				const double cur_z = info.RANGE_RIGHT * k / info.N;
+				const double diff = std::abs(
+					vec_r[0][(i * N + j) * (2 * (N / 2 + 1)) + k] +
+					vec_r[1][(i * N + j) * (2 * (N / 2 + 1)) + k] +
+					vec_r[2][(i * N + j) * (2 * (N / 2 + 1)) + k] -
+					(	fill_real_derived_function[0][0](cur_x, cur_y, cur_z) +
+						fill_real_derived_function[1][1](cur_x, cur_y, cur_z) +
+						fill_real_derived_function[2][2](cur_x, cur_y, cur_z)));
+				if (diff > EPSILON) {
+					std::cout << info.rank << ' ' << i << ' ' << j << ' ' << k << std::endl;
+				}
+			}
+		}
+	}
+
+	for (int q = 0; q < 3; ++q) {
+		fftw_free(vec_r[q]);
+		fftw_free(vec_c[q]);
+		fftw_destroy_plan(forward_plan[q]);
+		fftw_destroy_plan(backward_plan[q]);
+	}
+
+	return;
+}
+
+void test_energy(const Task_features& info) {
+	const ptrdiff_t N = info.N;
+	fftw_plan forward_plan[3], backward_plan[3];
+	double* vec_r[3];
+	fftw_complex* vec_c[3];
+	for (int q = 0; q < 3; ++q) {
+		vec_r[q] = fftw_alloc_real(2 * info.alloc_local);
+		vec_c[q] = fftw_alloc_complex(info.alloc_local);
+		forward_plan[q]  = fftw_mpi_plan_dft_r2c_3d(N, N, N, vec_r[q], vec_c[q], MPI_COMM_WORLD, FFTW_MEASURE);
+		backward_plan[q] = fftw_mpi_plan_dft_c2r_3d(N, N, N, vec_c[q], vec_r[q], MPI_COMM_WORLD, FFTW_MEASURE);
+	}
+	fill_real(vec_r, info);
+
+	double energy = field_energy_phi(vec_r[0], vec_r[1], vec_r[2], info);
+	if (info.rank == 0) {
+		MPI_Reduce(MPI_IN_PLACE, &energy, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	} else {
+		MPI_Reduce(&energy, nullptr, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	}
+	if (info.rank == 0) {
+		std::cout << 'p' << '\n';
+		std::cout << energy << '\n';
+	}
+
+	fftw_execute(forward_plan[0]);
+	fftw_execute(forward_plan[1]);
+	fftw_execute(forward_plan[2]);
+
+	for (int q = 0; q < 3; ++q) {
+		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
+			for (ptrdiff_t j = 0; j < N; ++j) {
+				for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) {
+					vec_c[q][(i * N + j) * (N / 2 + 1) + k][0] /= N * std::sqrt(N);
+					vec_c[q][(i * N + j) * (N / 2 + 1) + k][1] /= N * std::sqrt(N);
+				}
+			}
+		}
+	}
+
+	energy = field_energy_fourie(vec_c[0], vec_c[1], vec_c[2], info);
+	if (info.rank == 0) {
+		MPI_Reduce(MPI_IN_PLACE, &energy, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	} else {
+		MPI_Reduce(&energy, nullptr, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	}
+	if (info.rank == 0) {
+		std::cout << 'f' << '\n';
+		std::cout << energy << '\n';
+	}
+
+	for (int q = 0; q < 3; ++q) {
+		fftw_free(vec_r[q]);
+		fftw_free(vec_c[q]);
+		fftw_destroy_plan(forward_plan[q]);
+		fftw_destroy_plan(backward_plan[q]);
+	}
+
+	return;
+}
+
+/*
+const auto begin = std::chrono::steady_clock::now();
+
+const auto end = std::chrono::steady_clock::now();
+auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+std::cout << elapsed_ms.count() << "ms" << "\n";
+*/
+
+int main(int argc, char *argv[]) {
+
+	const int power_of_two = std::atoi(argv[1]);
+	const ptrdiff_t N = 1 << power_of_two;
+
+	MPI_Init(&argc, &argv);
+	int rank, size;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	fftw_mpi_init();
+
+	ptrdiff_t alloc_local, local_n0, local_0_start;
+	alloc_local = fftw_mpi_local_size_3d(N, N, N / 2 + 1, MPI_COMM_WORLD, &local_n0, &local_0_start);
+
+	const Task_features info{N, 0, std::acos(-1) * 2, alloc_local, local_n0, local_0_start, rank, size};
+
+	//test_derivative(info);
+	//test_rotor(info);
+	//test_divergence(info);
+	//test_energy(info);
 
 	MPI_Finalize();
-
 	return 0;
 }
