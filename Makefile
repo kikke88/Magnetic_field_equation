@@ -1,4 +1,4 @@
-OPT 		=	-O2 -std=c++1z
+OPT 		=	-O2 -std=c++11
 FFTW_FLAGS 	=	-lfftw3_mpi -lfftw3 -lm
 INC			=	-I ./include/
 

@@ -88,7 +88,7 @@ void rotor(	fftw_complex *rot,
 	double coef_l, coef_r;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
-			for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) { //  [0, N/2 + 1)
+			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) { //  [0, N/2 + 1)
 				const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
 				if (num_of_dimension == 0) {
 					coef_l = info.indeces[j];
@@ -116,7 +116,7 @@ void divergence(fftw_complex *result,
 	double coef_1, coef_2, coef_3;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
-			for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) { //  [0, N/2 + 1)
+			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) { //  [0, N/2 + 1)
 				const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
 				coef_1 = info.indeces[info.local_0_start + i];
 				coef_2 = info.indeces[j];
@@ -159,7 +159,7 @@ double field_energy_fourie(	const fftw_complex *ptr_1,
 			energy += 0.5 * (	ptr_1[idx][0] * ptr_1[idx][0] + ptr_1[idx][1] * ptr_1[idx][1] +
 								ptr_2[idx][0] * ptr_2[idx][0] + ptr_2[idx][1] * ptr_2[idx][1] +
 								ptr_3[idx][0] * ptr_3[idx][0] + ptr_3[idx][1] * ptr_3[idx][1]);
-			for (ptrdiff_t k = 1; k < info.RANGE_RIGHT; ++k) { //  [1, N/2 + 1)
+			for (ptrdiff_t k = 1; k < info.INDEX_RIGHT; ++k) { //  [1, N/2 + 1)
 				++idx;
 				energy += (	ptr_1[idx][0] * ptr_1[idx][0] + ptr_1[idx][1] * ptr_1[idx][1] +
 							ptr_2[idx][0] * ptr_2[idx][0] + ptr_2[idx][1] * ptr_2[idx][1] +
@@ -176,7 +176,7 @@ void correction(fftw_complex *result_ptr_1, fftw_complex *result_ptr_2, fftw_com
 	double coef_1, coef_2, coef_3;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
-			for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) { //  [0, N/2 + 1)
+			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) { //  [0, N/2 + 1)
 				const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
 				coef_1 = info.indeces[info.local_0_start + i];
 				coef_2 = info.indeces[j];
@@ -208,7 +208,7 @@ void output_of_large_abs_value_fourie_coef(	const fftw_complex *ptr,
 		if (info.rank == rnk) {
 			for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 				for (ptrdiff_t j = 0; j < info.N; ++j) {
-					for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) {
+					for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) {
 						const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
 						if (std::sqrt(ptr[idx][0] * ptr[idx][0] + ptr[idx][1] * ptr[idx][1]) > abs_value) {
 							std::cout << "rank: " << rnk << " , idx: " << idx << " , value: " << ptr[idx][0] << ' ' << ptr[idx][1] << '\n';
@@ -288,7 +288,6 @@ void test_derivative(const Task_features& info) {
 		return std::cos(-3 * x1 - x2 + x3);
 	});
 	for (int num = 0; num < 3; ++num) {
-		std::cout << num << '\n';
 		fill_real(vec_r, info);
 		fftw_execute(forward_plan[0]);
 		fftw_execute(forward_plan[1]);
@@ -378,7 +377,7 @@ void test_rotor(const Task_features& info) {
 	for (int q = 0; q < 3; ++q) {
 		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 			for (ptrdiff_t j = 0; j < info.N; ++j) {
-				for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) {
+				for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) {
 					vec_c[q][(i * N + j) * (N / 2 + 1) + k][0] /= N * std::sqrt(N);
 					vec_c[q][(i * N + j) * (N / 2 + 1) + k][1] /= N * std::sqrt(N);
 				}
@@ -568,7 +567,7 @@ void test_energy(const Task_features& info) {
 	for (int q = 0; q < 3; ++q) {
 		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 			for (ptrdiff_t j = 0; j < N; ++j) {
-				for (ptrdiff_t k = 0; k < info.RANGE_RIGHT; ++k) {
+				for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) {
 					vec_c[q][(i * N + j) * (N / 2 + 1) + k][0] /= N * std::sqrt(N);
 					vec_c[q][(i * N + j) * (N / 2 + 1) + k][1] /= N * std::sqrt(N);
 				}
@@ -586,6 +585,8 @@ void test_energy(const Task_features& info) {
 		std::cout << 'f' << '\n';
 		std::cout << energy << '\n';
 	}
+
+
 
 	for (int q = 0; q < 3; ++q) {
 		fftw_free(vec_r[q]);
@@ -607,8 +608,7 @@ std::cout << elapsed_ms.count() << "ms" << "\n";
 
 int main(int argc, char *argv[]) {
 
-	const int power_of_two = std::atoi(argv[1]);
-	const ptrdiff_t N = 1 << power_of_two;
+	const ptrdiff_t N = std::atoi(argv[1]);
 
 	MPI_Init(&argc, &argv);
 	int rank, size;

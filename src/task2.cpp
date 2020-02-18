@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
+#include <fstream>
 
 #include <mpi.h>
 #include <fftw3-mpi.h>
@@ -14,27 +15,25 @@ const double PI_PLUS_PI = std::acos(-1) * 2;
 
 int main(int argc, char *argv[]) {
 
-	const int iters 		= std::atoi(argv[1]);
-	const int power_of_two 	= std::atoi(argv[2]);
-	const ptrdiff_t N = 1 << power_of_two;
+	const int iters 	= std::atoi(argv[1]);
+	const ptrdiff_t N 	= std::atoi(argv[2]);
 	const double	tau = std::strtod(argv[3], nullptr),
-					niu = std::strtod(argv[4], nullptr);
-
+					eta = std::strtod(argv[4], nullptr);
 	int rank, size;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	fftw_mpi_init();
 
-	ptrdiff_t alloc_local, local_n0, local_0_start;
-	alloc_local = fftw_mpi_local_size_3d(N, N, N / 2 + 1, MPI_COMM_WORLD, &local_n0, &local_0_start);
+	ptrdiff_t alloc_local, local_dim0_size, local_dim0_start;
+	alloc_local = fftw_mpi_local_size_3d(N, N, N / 2 + 1, MPI_COMM_WORLD, &local_dim0_size, &local_dim0_start);
+	std::ofstream ofile(argv[5]);
 	{
-		Field 	magnetic_field	{Modes::ALL_COMPONENTS, 		N, tau, niu, 0, PI_PLUS_PI, alloc_local, local_n0, local_0_start, rank, size},
-				velocity_field	{Modes::ALL_REAL_COMPONENTS, 	N, tau, niu, 0, PI_PLUS_PI, alloc_local, local_n0, local_0_start, rank, size},
-				rotor_field		{Modes::ALL_COMPONENTS,			N, tau, niu, 0, PI_PLUS_PI, alloc_local, local_n0, local_0_start, rank, size},
-				auxiliary_field	{Modes::ONE_COMPLEX_COMPONENT, 	N, tau, niu, 0, PI_PLUS_PI, alloc_local, local_n0, local_0_start, rank, size};
+		Field 	magnetic_field	{Modes::ALL_COMPONENTS, 		N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
+				velocity_field	{Modes::ALL_REAL_COMPONENTS, 	N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
+				rotor_field		{Modes::ALL_COMPONENTS,			N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
+				auxiliary_field	{Modes::ONE_COMPLEX_COMPONENT, 	N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size};
 
-		// init
 		magnetic_field.fill_magnetic_field();
 		velocity_field.fill_velocity_field();
 		magnetic_field.forward_transformation();
@@ -45,11 +44,16 @@ int main(int argc, char *argv[]) {
 			magnetic_field.backward_transformation();
 			magnetic_field.do_step(velocity_field, rotor_field);
 			cur_energy = magnetic_field.energy_fourie();
+			if (cur_energy > 1e285) {
+					break;
+			}
 			if (rank == 0) {
-				std::cout << cur_energy << std::endl;
+				std::cout << cur_energy << '\n';
+				ofile << cur_energy << '\n';
 			}
 		}
 	}
+	ofile.close();
 	MPI_Finalize();
 	return 0;
 }

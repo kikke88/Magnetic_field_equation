@@ -18,15 +18,15 @@ private:
 	const Modes mode;
 
 	const ptrdiff_t N;
-	const double TAU, NIU;
+	const double TAU, ETA;
 	const ptrdiff_t INDEX_LEFT, INDEX_RIGHT;
 	const double RANGE_LEFT, RANGE_RIGHT;
 
-	const ptrdiff_t alloc_local, local_n0, local_0_start;
+	const ptrdiff_t alloc_local, local_dim0_size, local_dim0_start;
 
 	double *indeces;
 	const double NORMALIZATION_CONSTANT;
-	int rank, size;
+	const int rank, size;
 
 	void cross_product(const Field&, const Field&);
 
