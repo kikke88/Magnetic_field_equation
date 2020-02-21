@@ -54,7 +54,7 @@ void derivative_of_function(fftw_complex* ptr, const Task_features& info, const 
 					coef = info.indeces[info.local_0_start + i];
 				} else if (num_of_dimension == 1) {
 					coef = info.indeces[j];
-				} else if (num_of_dimension == 2) {
+				} else {
 					coef = k;
 				}
 				ptr[(i * info.N + j) * (info.N / 2 + 1) + k][0] *= -coef;
@@ -96,7 +96,7 @@ void rotor(	fftw_complex *rot,
 				} else if (num_of_dimension == 1) {
 					coef_l = k;
 					coef_r = info.indeces[info.local_0_start + i];
-				} else if (num_of_dimension == 2) {
+				} else {
 					coef_l = info.indeces[info.local_0_start + i];
 					coef_r = info.indeces[j];
 				}
@@ -225,13 +225,13 @@ void output_of_large_abs_value_fourie_coef(	const fftw_complex *ptr,
 void fill_real(double* vec[3], const Task_features& info) {
 	std::vector<std::function<double(const double, const double, const double)>> fill_real_functions;
 	fill_real_functions.push_back([](const double x1, const double x2, const double x3) {
-		return std::sin(x1 - 2 * x2 + 3 * x3);
+		return std::exp(std::sin(x1 - 2 * x2 + 3 * x3));
 	});
 	fill_real_functions.push_back([](const double x1, const double x2, const double x3) {
-		return std::cos(-x1 - x3);
+		return std::exp(std::cos(-x1 - x3));
 	});
 	fill_real_functions.push_back([](const double x1, const double x2, const double x3) {
-		return std::sin(-3 * x1 - x2 + x3);
+		return std::exp(std::sin(-3 * x1 - x2 + x3));
 	});
 
 	for (ptrdiff_t q = 0; q < 3; ++q)
@@ -261,31 +261,31 @@ void test_derivative(const Task_features& info) {
 	}
 	std::vector<std::vector<std::function<double(const double, const double, const double)>>> fill_real_derived_function(3);
 	fill_real_derived_function[0].push_back([](const double x1, const double x2, const double x3) {
-		return std::cos(1 * x1 - 2 * x2 + 3 * x3);
+		return std::exp(std::sin(x1 - 2 * x2 + 3 * x3)) * std::cos(1 * x1 - 2 * x2 + 3 * x3);
 	});
 	fill_real_derived_function[0].push_back([](const double x1, const double x2, const double x3) {
-		return -2 * std::cos(1 * x1 - 2 * x2 + 3 * x3);
+		return std::exp(std::sin(x1 - 2 * x2 + 3 * x3)) * -2 * std::cos(1 * x1 - 2 * x2 + 3 * x3);
 	});
 	fill_real_derived_function[0].push_back([](const double x1, const double x2, const double x3) {
-		return 3 * std::cos(1 * x1 - 2 * x2 + 3 * x3);
+		return std::exp(std::sin(x1 - 2 * x2 + 3 * x3)) * 3 * std::cos(1 * x1 - 2 * x2 + 3 * x3);
 	});
 	fill_real_derived_function[1].push_back([](const double x1, const double x2, const double x3) {
-		return std::sin(-x1 - x3);
+		return std::exp(std::cos(-x1 - x3)) * std::sin(-x1 - x3);
 	});
 	fill_real_derived_function[1].push_back([](const double x1, const double x2, const double x3) {
 		return 0;
 	});
 	fill_real_derived_function[1].push_back([](const double x1, const double x2, const double x3) {
-		return std::sin(-x1 - x3);
+		return std::exp(std::cos(-x1 - x3)) * std::sin(-x1 - x3);
 	});
 	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
-		return -3 * std::cos(-3 * x1 - x2 + x3);
+		return std::exp(std::sin(-3 * x1 - x2 + x3)) * -3 * std::cos(-3 * x1 - x2 + x3);
 	});
 	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
-		return -std::cos(-3 * x1 - x2 + x3);
+		return std::exp(std::sin(-3 * x1 - x2 + x3)) * -std::cos(-3 * x1 - x2 + x3);
 	});
 	fill_real_derived_function[2].push_back([](const double x1, const double x2, const double x3) {
-		return std::cos(-3 * x1 - x2 + x3);
+		return std::exp(std::sin(-3 * x1 - x2 + x3)) * std::cos(-3 * x1 - x2 + x3);
 	});
 	for (int num = 0; num < 3; ++num) {
 		fill_real(vec_r, info);
@@ -310,7 +310,7 @@ void test_derivative(const Task_features& info) {
 				}
 			}
 		}
-
+		double max_diff = 0.;
 		for (int q = 0; q < 3; ++q) {
 			for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 				for (ptrdiff_t j = 0; j < info.N; ++j) {
@@ -318,14 +318,12 @@ void test_derivative(const Task_features& info) {
 						const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
 						const double cur_y = info.RANGE_RIGHT * j / info.N;
 						const double cur_z = info.RANGE_RIGHT * k / info.N;
-						const double diff = std::abs(vec_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - fill_real_derived_function[q][num](cur_x, cur_y, cur_z));
-						if (diff > EPSILON) {
-							std::cout << info.rank << ' ' << i << ' ' << j << ' ' << k << std::endl;
-						}
+						max_diff = std::max(max_diff, std::abs(vec_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - fill_real_derived_function[q][num](cur_x, cur_y, cur_z)));
 					}
 				}
 			}
 		}
+		std::cout << max_diff << std::endl;
 	}
 
 	for (int q = 0; q < 3; ++q) {
@@ -403,16 +401,7 @@ void test_rotor(const Task_features& info) {
 	fftw_execute(rot_c_to_r[1]);
 	fftw_execute(rot_c_to_r[2]);
 
-	for (int q = 0; q < 3; ++q) {
-		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
-			for (ptrdiff_t j = 0; j < info.N; ++j) {
-				for (ptrdiff_t k = 0; k < info.N; ++k) {
-					rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] /= N * std::sqrt(N);
-				}
-			}
-		}
-	}
-
+	double max_diff = 0.;
 	for (int q = 0; q < 3; ++q) {
 		for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 			for (ptrdiff_t j = 0; j < info.N; ++j) {
@@ -420,14 +409,14 @@ void test_rotor(const Task_features& info) {
 					const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
 					const double cur_y = info.RANGE_RIGHT * j / info.N;
 					const double cur_z = info.RANGE_RIGHT * k / info.N;
-					const double diff = std::abs(rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - rotor_functions[q](cur_x, cur_y, cur_z));
-					if (diff > EPSILON) {
-						std::cout << info.rank << ' ' << i << ' ' << j << ' ' << k << std::endl;
-					}
+					max_diff = std::max(max_diff, std::abs(rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - rotor_functions[q](cur_x, cur_y, cur_z)));
+					
 				}
 			}
 		}
 	}
+
+	std::cout << max_diff << std::endl;
 
 	for (int q = 0; q < 3; ++q) {
 		fftw_free(vec_r[q]);
@@ -506,25 +495,24 @@ void test_divergence(const Task_features& info) {
 		}
 	}
 
+	double max_diff = 0.;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
 			for (ptrdiff_t k = 0; k < info.N; ++k) {
 				const double cur_x = info.RANGE_RIGHT * (info.local_0_start + i) / info.N;
 				const double cur_y = info.RANGE_RIGHT * j / info.N;
 				const double cur_z = info.RANGE_RIGHT * k / info.N;
-				const double diff = std::abs(
+				max_diff = std::max(max_diff, std::abs(
 					vec_r[0][(i * N + j) * (2 * (N / 2 + 1)) + k] +
 					vec_r[1][(i * N + j) * (2 * (N / 2 + 1)) + k] +
 					vec_r[2][(i * N + j) * (2 * (N / 2 + 1)) + k] -
 					(	fill_real_derived_function[0][0](cur_x, cur_y, cur_z) +
 						fill_real_derived_function[1][1](cur_x, cur_y, cur_z) +
-						fill_real_derived_function[2][2](cur_x, cur_y, cur_z)));
-				if (diff > EPSILON) {
-					std::cout << info.rank << ' ' << i << ' ' << j << ' ' << k << std::endl;
-				}
+						fill_real_derived_function[2][2](cur_x, cur_y, cur_z))));
 			}
 		}
 	}
+	std::cout << max_diff << std::endl;
 
 	for (int q = 0; q < 3; ++q) {
 		fftw_free(vec_r[q]);
@@ -586,8 +574,6 @@ void test_energy(const Task_features& info) {
 		std::cout << energy << '\n';
 	}
 
-
-
 	for (int q = 0; q < 3; ++q) {
 		fftw_free(vec_r[q]);
 		fftw_free(vec_c[q]);
@@ -598,13 +584,6 @@ void test_energy(const Task_features& info) {
 	return;
 }
 
-/*
-const auto begin = std::chrono::steady_clock::now();
-
-const auto end = std::chrono::steady_clock::now();
-auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-std::cout << elapsed_ms.count() << "ms" << "\n";
-*/
 
 int main(int argc, char *argv[]) {
 
@@ -621,10 +600,10 @@ int main(int argc, char *argv[]) {
 
 	const Task_features info{N, 0, std::acos(-1) * 2, alloc_local, local_n0, local_0_start, rank, size};
 
-	//test_derivative(info);
+	test_derivative(info);
 	//test_rotor(info);
 	//test_divergence(info);
-	//test_energy(info);
+	test_energy(info);
 
 	MPI_Finalize();
 	return 0;

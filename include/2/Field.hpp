@@ -24,7 +24,7 @@ private:
 
 	const ptrdiff_t alloc_local, local_dim0_size, local_dim0_start;
 
-	double *indeces;
+	ptrdiff_t *indeces;
 	const double NORMALIZATION_CONSTANT;
 	const int rank, size;
 
@@ -38,7 +38,7 @@ public:
 			const ptrdiff_t, const ptrdiff_t, const ptrdiff_t,
 			const int, const int);
 
-	~Field();
+	virtual ~Field();
 
 	void forward_transformation();
 
