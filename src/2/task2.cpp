@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
 	ptrdiff_t alloc_local, local_dim0_size, local_dim0_start;
 	alloc_local = fftw_mpi_local_size_3d(N, N, N / 2 + 1, MPI_COMM_WORLD, &local_dim0_size, &local_dim0_start);
-	std::ofstream ofile(argv[5]);
+	std::ofstream ofile("file_w_energy.data");
 	{
 		Field 	magnetic_field	{Modes::ALL_COMPONENTS, 		N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
 				velocity_field	{Modes::ALL_REAL_COMPONENTS, 	N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
