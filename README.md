@@ -1,5 +1,5 @@
 # Magnetic_field_equation
-![](/home/kikke/Pictures/S.png) 
+[![S.png](https://i.postimg.cc/MHww7f8C/S.png)](https://postimg.cc/mzmKRDkj) 
 Vector-functions: b - magnetic field, v - velocity field. η - float const.
 b(0, x1, x2, x3), v(x1, x2, x3) - are known.
 The problem is solved in the region [0, T] × Ω, where Ω = [0, 2π] × [0, 2π] × [0, 2π].
