@@ -34,9 +34,9 @@ Run
 or
 
 	mpirun -n *procs num* ./bin/task2 	*num of time steps*
-										*num of points on the segment [0, 2π]*
-										*time step value*
-										*η value*
+						*num of points on the segment [0, 2π]*
+						*time step value*
+						*η value*
 	
 The scheme is explicit, therefore, a time step cannot be taken large, a value of the order of 1e-4 should be sufficient. At first there will be a transitional mode, since the solution starts from some initial field, but starting from a certain moment, either exponential growth or exponential decay(depends on η) should be outlined.	
 
