@@ -200,6 +200,7 @@ void correction(fftw_complex *result_ptr_1, fftw_complex *result_ptr_2, fftw_com
 	return;
 }
 
+/*
 void output_of_large_abs_value_fourie_coef(	const fftw_complex *ptr,
 											const Task_features& info,
 											const double abs_value) {
@@ -221,6 +222,7 @@ void output_of_large_abs_value_fourie_coef(	const fftw_complex *ptr,
 	}
 	return;
 }
+*/
 
 void fill_real(double* vec[3], const Task_features& info) {
 	std::vector<std::function<double(const double, const double, const double)>> fill_real_functions;
@@ -324,7 +326,19 @@ void test_derivative(const Task_features& info) {
 				}
 			}
 		}
-		std::cout << max_diff << std::endl;
+
+		if (info.rank == 0) {
+			MPI_Reduce(MPI_IN_PLACE, &max_diff, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+		} else {
+			MPI_Reduce(&max_diff, nullptr, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+		}
+
+		if (info.rank == 0) {
+			if (num == 0) {
+				std::cout << "max deviation from correct ans(derivetive) for var:" << '\n';	
+			}
+			std::cout << num + 1 << " -- " << max_diff << '\n';
+		}
 	}
 
 	for (int q = 0; q < 3; ++q) {
@@ -417,7 +431,17 @@ void test_rotor(const Task_features& info) {
 		}
 	}
 
-	std::cout << max_diff << std::endl;
+	if (info.rank == 0) {
+		MPI_Reduce(MPI_IN_PLACE, &max_diff, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	} else {
+		MPI_Reduce(&max_diff, nullptr, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	}
+
+	if (info.rank == 0) {
+		std::cout << "max deviation from correct ans(rot):" << '\n';	
+		std::cout << max_diff << '\n';
+	}
+
 
 	for (int q = 0; q < 3; ++q) {
 		fftw_free(vec_r[q]);
@@ -513,7 +537,17 @@ void test_divergence(const Task_features& info) {
 			}
 		}
 	}
-	std::cout << max_diff << std::endl;
+
+	if (info.rank == 0) {
+		MPI_Reduce(MPI_IN_PLACE, &max_diff, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	} else {
+		MPI_Reduce(&max_diff, nullptr, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	}
+
+	if (info.rank == 0) {
+		std::cout << "max deviation from correct ans(div):" << '\n';	
+		std::cout << max_diff << '\n';
+	}
 
 	for (int q = 0; q < 3; ++q) {
 		fftw_free(vec_r[q]);
@@ -545,7 +579,7 @@ void test_energy(const Task_features& info) {
 		MPI_Reduce(&energy, nullptr, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	}
 	if (info.rank == 0) {
-		std::cout << 'p' << '\n';
+		std::cout << "energy phi space" << '\n';
 		std::cout << energy << '\n';
 	}
 
@@ -571,7 +605,7 @@ void test_energy(const Task_features& info) {
 		MPI_Reduce(&energy, nullptr, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	}
 	if (info.rank == 0) {
-		std::cout << 'f' << '\n';
+		std::cout << "energy fourie space" << '\n';
 		std::cout << energy << '\n';
 	}
 
@@ -601,10 +635,10 @@ int main(int argc, char *argv[]) {
 
 	const Task_features info{N, 0, std::acos(-1) * 2, alloc_local, local_n0, local_0_start, rank, size};
 
-	//test_derivative(info);
+	test_derivative(info);
 	test_rotor(info);
 	test_divergence(info);
-	//test_energy(info);
+	test_energy(info);
 
 	MPI_Finalize();
 	return 0;
