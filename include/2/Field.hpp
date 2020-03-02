@@ -33,10 +33,10 @@ private:
 	void divergence(const Field&);
 
 public:
-	Field(  const Modes, const ptrdiff_t, const double, const double,
-			const double, const double,
-			const ptrdiff_t, const ptrdiff_t, const ptrdiff_t,
-			const int, const int);
+	Field(const Modes, const ptrdiff_t, const double, const double,
+	      const double, const double,
+	      const ptrdiff_t, const ptrdiff_t, const ptrdiff_t,
+	      const int, const int);
 
 	virtual ~Field();
 

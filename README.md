@@ -1,5 +1,6 @@
 # Magnetic_field_equation
-[![S.png](https://i.postimg.cc/MHww7f8C/S.png)](https://postimg.cc/mzmKRDkj) 
+[![S.png](https://i.postimg.cc/MHww7f8C/S.png)](https://postimg.cc/mzmKRDkj)
+
 Vector-functions: b - magnetic field, v - velocity field. η - float const.
 b(0, x1, x2, x3), v(x1, x2, x3) - are known.
 The problem is solved in the region [0, T] × Ω, where Ω = [0, 2π] × [0, 2π] × [0, 2π].
@@ -19,7 +20,7 @@ The program uses [FFTW library](http://www.fftw.org/). A distributed-memory MPI 
 ***
 
 Task1 - testing of key functions(derivative of function, div, rot, energy estimation).
-Task2 - solving the equation of change in the magnetic field.
+Task2 - main semester task: solving the equation of change in the magnetic field.
 
 ***
 
@@ -30,13 +31,12 @@ Building
 Run
 
 	mpirun -n *procs num* ./bin/task1 *num of points on the segment [0, 2π]*
-	
+
 or
 
 	mpirun -n *procs num* ./bin/task2 	*num of time steps*
 						*num of points on the segment [0, 2π]*
 						*time step value*
 						*η value*
-	
-The scheme is explicit, therefore, a time step cannot be taken large, a value of the order of 1e-4 should be sufficient. At first there will be a transitional mode, since the solution starts from some initial field, but starting from a certain moment, either exponential growth or exponential decay(depends on η) should be outlined.	
 
+The scheme is explicit, therefore, a time step cannot be taken large, a value of the order of 1e-4 should be sufficient. At first there will be a transitional mode, since the solution starts from some initial field, but starting from a certain moment, either exponential growth or exponential decay(depends on η) should be outlined.

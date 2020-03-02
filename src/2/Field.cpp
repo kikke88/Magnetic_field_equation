@@ -16,13 +16,13 @@ void Field::cross_product(const Field& velocity_field, const Field& magnetic_fie
 			for (ptrdiff_t k = 0; k < N; ++k) {
 				idx = (i * N + j) * (2 * (N / 2 + 1)) + k;
 				vec_r[0][idx] = velocity_field.vec_r[1][idx] * magnetic_field.vec_r[2][idx] -
-								velocity_field.vec_r[2][idx] * magnetic_field.vec_r[1][idx];
+				                velocity_field.vec_r[2][idx] * magnetic_field.vec_r[1][idx];
 
 				vec_r[1][idx] = velocity_field.vec_r[2][idx] * magnetic_field.vec_r[0][idx] -
-								velocity_field.vec_r[0][idx] * magnetic_field.vec_r[2][idx];
+				                velocity_field.vec_r[0][idx] * magnetic_field.vec_r[2][idx];
 
 				vec_r[2][idx] = velocity_field.vec_r[0][idx] * magnetic_field.vec_r[1][idx] -
-								velocity_field.vec_r[1][idx] * magnetic_field.vec_r[0][idx];
+				                velocity_field.vec_r[1][idx] * magnetic_field.vec_r[0][idx];
 			}
 		}
 	}
@@ -41,12 +41,12 @@ void Field::divergence(const Field& source_field) {
 				coef_1 = static_cast<double>(indeces[j]);
 				coef_2 = static_cast<double>(k);
 				vec_c[0][idx][0] =-(coef_0 * source_field.vec_c[0][idx][1] +
-									coef_1 * source_field.vec_c[1][idx][1] +
-									coef_2 * source_field.vec_c[2][idx][1]);
+				                    coef_1 * source_field.vec_c[1][idx][1] +
+				                    coef_2 * source_field.vec_c[2][idx][1]);
 
-				vec_c[0][idx][1] = 	coef_0 * source_field.vec_c[0][idx][0] +
-									coef_1 * source_field.vec_c[1][idx][0] +
-									coef_2 * source_field.vec_c[2][idx][0];
+				vec_c[0][idx][1] =  coef_0 * source_field.vec_c[0][idx][0] +
+				                    coef_1 * source_field.vec_c[1][idx][0] +
+				                    coef_2 * source_field.vec_c[2][idx][0];
 			}
 		}
 	}
@@ -59,7 +59,7 @@ Field::Field(const Modes mode_, const ptrdiff_t N_, const double TAU_, const dou
 		const ptrdiff_t alloc_local_, const ptrdiff_t local_dim0_size_, const ptrdiff_t local_dim0_start_,
 		const int rank_, const int size_):
 		mode{mode_}, N{N_}, TAU{TAU_}, ETA{ETA_},
-		INDEX_LEFT{-N / 2 + 1}, INDEX_RIGHT{N / 2 + 1}, // [,)
+		INDEX_LEFT{-N / 2 + 1}, INDEX_RIGHT{N / 2 + 1},
 		RANGE_LEFT{rng_left_}, RANGE_RIGHT{rng_right_},
 		alloc_local{alloc_local_}, local_dim0_size{local_dim0_size_}, local_dim0_start{local_dim0_start_},
 		NORMALIZATION_CONSTANT{std::sqrt(N * N * N)}, rank{rank_}, size{size_} {
@@ -81,7 +81,6 @@ Field::Field(const Modes mode_, const ptrdiff_t N_, const double TAU_, const dou
 	} else if (mode == Modes::ONE_COMPLEX_COMPONENT) {
 		vec_c[0] = fftw_alloc_complex(alloc_local);
 	}
-
 	indeces = new ptrdiff_t[N];
 	for (ptrdiff_t i = 0; i <= N / 2; ++i) {
 		indeces[i] = i;
@@ -166,10 +165,10 @@ void Field::correction(Field& tmp_field) {
 			for (ptrdiff_t k = 0; k < INDEX_RIGHT; ++k) {
 				idx = (i * N + j) * (N / 2 + 1) + k;
 				local_max = std::max(local_max, std::sqrt(
-												tmp_field.vec_c[0][idx][0] *
-												tmp_field.vec_c[0][idx][0] +
-												tmp_field.vec_c[0][idx][1] *
-												tmp_field.vec_c[0][idx][1]));
+				                                tmp_field.vec_c[0][idx][0] *
+				                                tmp_field.vec_c[0][idx][0] +
+				                                tmp_field.vec_c[0][idx][1] *
+				                                tmp_field.vec_c[0][idx][1]));
 			}
 		}
 	}
@@ -193,7 +192,7 @@ void Field::correction(Field& tmp_field) {
 						vec_c[2][idx][0] = 0;
 						vec_c[2][idx][1] = 0;
 					} else {
-						sum_coef = coef_0 * coef_0 + coef_1 * coef_1 + coef_2 * coef_2;	
+						sum_coef = coef_0 * coef_0 + coef_1 * coef_1 + coef_2 * coef_2;
 						vec_c[0][idx][0] += -coef_0 * tmp_field.vec_c[0][idx][1] / sum_coef;
 						vec_c[0][idx][1] +=  coef_0 * tmp_field.vec_c[0][idx][0] / sum_coef;
 						vec_c[1][idx][0] += -coef_1 * tmp_field.vec_c[0][idx][1] / sum_coef;
@@ -247,7 +246,6 @@ void Field::rotor(const Field& velocity_field, const Field& magnetic_field) {
 }
 
 void Field::do_step(const Field& velocity_field, Field& rotor_field) {
-
 	rotor_field.rotor(velocity_field, *this);
 
 	ptrdiff_t idx;
@@ -280,9 +278,9 @@ double Field::energy_phi() const {
 		for (ptrdiff_t j = 0; j < N; ++j) {
 			for (ptrdiff_t k = 0; k < N; ++k) {
 				idx = (i * N + j) * (2 * (N / 2 + 1)) + k;
-				energy += 	vec_r[0][idx] * vec_r[0][idx] +
-							vec_r[1][idx] * vec_r[1][idx] +
-							vec_r[2][idx] * vec_r[2][idx];
+				energy += vec_r[0][idx] * vec_r[0][idx] +
+				          vec_r[1][idx] * vec_r[1][idx] +
+				          vec_r[2][idx] * vec_r[2][idx];
 			}
 		}
 	}
@@ -298,18 +296,20 @@ double Field::energy_fourie() const {
 	for (ptrdiff_t i = 0; i < local_dim0_size; ++i) {
 		for (ptrdiff_t j = 0; j < N; ++j) {
 			ptrdiff_t idx = (i * N + j) * (N / 2 + 1);
-			energy += 0.5 * (	vec_c[0][idx][0] * vec_c[0][idx][0] + vec_c[0][idx][1] * vec_c[0][idx][1] +
-								vec_c[1][idx][0] * vec_c[1][idx][0] + vec_c[1][idx][1] * vec_c[1][idx][1] +
-								vec_c[2][idx][0] * vec_c[2][idx][0] + vec_c[2][idx][1] * vec_c[2][idx][1]);
+			energy += 0.5 * (vec_c[0][idx][0] * vec_c[0][idx][0] + vec_c[0][idx][1] * vec_c[0][idx][1] +
+			                 vec_c[1][idx][0] * vec_c[1][idx][0] + vec_c[1][idx][1] * vec_c[1][idx][1] +
+			                 vec_c[2][idx][0] * vec_c[2][idx][0] + vec_c[2][idx][1] * vec_c[2][idx][1]);
 			for (ptrdiff_t k = 1; k < INDEX_RIGHT; ++k) {
 				++idx;
-				energy += (	vec_c[0][idx][0] * vec_c[0][idx][0] + vec_c[0][idx][1] * vec_c[0][idx][1] +
-							vec_c[1][idx][0] * vec_c[1][idx][0] + vec_c[1][idx][1] * vec_c[1][idx][1] +
-							vec_c[2][idx][0] * vec_c[2][idx][0] + vec_c[2][idx][1] * vec_c[2][idx][1]);
+				energy += (vec_c[0][idx][0] * vec_c[0][idx][0] + vec_c[0][idx][1] * vec_c[0][idx][1] +
+				           vec_c[1][idx][0] * vec_c[1][idx][0] + vec_c[1][idx][1] * vec_c[1][idx][1] +
+				           vec_c[2][idx][0] * vec_c[2][idx][0] + vec_c[2][idx][1] * vec_c[2][idx][1]);
 			}
 		}
 	}
+
 	MPI_Allreduce(MPI_IN_PLACE, &energy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
 	return energy;
 }
 
@@ -334,8 +334,8 @@ void Field::fill_velocity_field() {
 				for (ptrdiff_t k = 0; k < N; ++k) {
 					idx = (i * N + j) * (2 * (N / 2 + 1)) + k;
 					cur_x = RANGE_RIGHT * static_cast<double>(local_dim0_start + i) / static_cast<double>(N);
-					cur_y = RANGE_RIGHT * static_cast<double>(j) / static_cast<double>(N);
-					cur_z = RANGE_RIGHT * static_cast<double>(k) / static_cast<double>(N);
+					cur_y = RANGE_RIGHT * static_cast<double>(j)                    / static_cast<double>(N);
+					cur_z = RANGE_RIGHT * static_cast<double>(k)                    / static_cast<double>(N);
 					vec_r[q][idx] = velocity_functions[q](cur_x, cur_y, cur_z);
 				}
 			}
@@ -365,8 +365,8 @@ void Field::fill_magnetic_field() {
 				for (ptrdiff_t k = 0; k < N; ++k) {
 					idx = (i * N + j) * (2 * (N / 2 + 1)) + k;
 					cur_x = RANGE_RIGHT * static_cast<double>(local_dim0_start + i) / static_cast<double>(N);
-					cur_y = RANGE_RIGHT * static_cast<double>(j) / static_cast<double>(N);
-					cur_z = RANGE_RIGHT * static_cast<double>(k) / static_cast<double>(N);
+					cur_y = RANGE_RIGHT * static_cast<double>(j)                    / static_cast<double>(N);
+					cur_z = RANGE_RIGHT * static_cast<double>(k)                    / static_cast<double>(N);
 					vec_r[q][idx] = real_functions[q](cur_x, cur_y, cur_z);
 				}
 			}

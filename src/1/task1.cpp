@@ -20,14 +20,14 @@ struct Task_features {
 	int rank, size;
 
 	Task_features(  const ptrdiff_t N_,
-					const double rng_left_, const double rng_right_,
-					const ptrdiff_t alloc_local_, const ptrdiff_t local_n0_, const ptrdiff_t local_0_start_,
-					const int rank_, const int size_):
-					N{N_},
-					INDEX_LEFT{-N / 2 + 1}, INDEX_RIGHT{N / 2 + 1}, //  [left, right)
-					RANGE_LEFT{rng_left_}, RANGE_RIGHT{rng_right_},
-					alloc_local{alloc_local_}, local_n0{local_n0_}, local_0_start{local_0_start_},
-					rank{rank_}, size{size_} {
+	                const double rng_left_, const double rng_right_,
+	                const ptrdiff_t alloc_local_, const ptrdiff_t local_n0_, const ptrdiff_t local_0_start_,
+	                const int rank_, const int size_):
+	                N{N_},
+	                INDEX_LEFT{-N / 2 + 1}, INDEX_RIGHT{N / 2 + 1}, //  [left, right)
+	                RANGE_LEFT{rng_left_}, RANGE_RIGHT{rng_right_},
+	                alloc_local{alloc_local_}, local_n0{local_n0_}, local_0_start{local_0_start_},
+	                rank{rank_}, size{size_} {
 		indeces = new double[N];
 		for (ptrdiff_t i = 0; i <= N / 2; ++i) {
 			indeces[i] = i;
@@ -48,8 +48,8 @@ void derivative_of_function(fftw_complex* ptr, const Task_features& info, const 
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
 			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) { //  [0, N/2 + 1)
-				std::swap(	ptr[(i * info.N + j) * (info.N / 2 + 1) + k][0],
-							ptr[(i * info.N + j) * (info.N / 2 + 1) + k][1]);
+				std::swap(ptr[(i * info.N + j) * (info.N / 2 + 1) + k][0],
+				          ptr[(i * info.N + j) * (info.N / 2 + 1) + k][1]);
 				if (num_of_dimension == 0) {
 					coef = info.indeces[info.local_0_start + i];
 				} else if (num_of_dimension == 1) {
@@ -82,9 +82,9 @@ void cross_product_func(double *cross_product,
 }
 */
 
-void rotor(	fftw_complex *rot,
-			const fftw_complex *cross_p_l, const fftw_complex *cross_p_r,
-			const Task_features& info, const int num_of_dimension) {
+void rotor(fftw_complex *rot,
+           const fftw_complex *cross_p_l, const fftw_complex *cross_p_r,
+           const Task_features& info, const int num_of_dimension) {
 	double coef_l, coef_r;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
@@ -109,14 +109,14 @@ void rotor(	fftw_complex *rot,
 }
 
 void divergence(fftw_complex *result,
-				const fftw_complex *ptr_1,
-				const fftw_complex *ptr_2,
-				const fftw_complex *ptr_3,
-				const Task_features& info) {
+                const fftw_complex *ptr_1,
+                const fftw_complex *ptr_2,
+                const fftw_complex *ptr_3,
+                const Task_features& info) {
 	double coef_1, coef_2, coef_3;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
-			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) { //  [0, N/2 + 1)
+			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) {
 				const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
 				coef_1 = info.indeces[info.local_0_start + i];
 				coef_2 = info.indeces[j];
@@ -130,17 +130,17 @@ void divergence(fftw_complex *result,
 }
 
 double field_energy_phi(const double *ptr_1,
-						const double *ptr_2,
-						const double *ptr_3,
-						const Task_features& info) {
+                        const double *ptr_2,
+                        const double *ptr_3,
+                        const Task_features& info) {
 	double energy = 0.;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
 			for (ptrdiff_t k = 0; k < info.N; ++k) {
 				const ptrdiff_t idx = (i * info.N + j) * (2 * (info.N / 2 + 1)) + k;
-				energy += 	ptr_1[idx] * ptr_1[idx] +
-							ptr_2[idx] * ptr_2[idx] +
-							ptr_3[idx] * ptr_3[idx];
+				energy += ptr_1[idx] * ptr_1[idx] +
+				          ptr_2[idx] * ptr_2[idx] +
+				          ptr_3[idx] * ptr_3[idx];
 			}
 		}
 	}
@@ -148,22 +148,22 @@ double field_energy_phi(const double *ptr_1,
 	return energy;
 }
 
-double field_energy_fourie(	const fftw_complex *ptr_1,
-							const fftw_complex *ptr_2,
-							const fftw_complex *ptr_3,
-							const Task_features& info) {
+double field_energy_fourie( const fftw_complex *ptr_1,
+                            const fftw_complex *ptr_2,
+                            const fftw_complex *ptr_3,
+                            const Task_features& info) {
 	double energy = 0.;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
 			ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1);
-			energy += 0.5 * (	ptr_1[idx][0] * ptr_1[idx][0] + ptr_1[idx][1] * ptr_1[idx][1] +
-								ptr_2[idx][0] * ptr_2[idx][0] + ptr_2[idx][1] * ptr_2[idx][1] +
-								ptr_3[idx][0] * ptr_3[idx][0] + ptr_3[idx][1] * ptr_3[idx][1]);
-			for (ptrdiff_t k = 1; k < info.INDEX_RIGHT; ++k) { //  [1, N/2 + 1)
+			energy += 0.5 * (ptr_1[idx][0] * ptr_1[idx][0] + ptr_1[idx][1] * ptr_1[idx][1] +
+			                 ptr_2[idx][0] * ptr_2[idx][0] + ptr_2[idx][1] * ptr_2[idx][1] +
+			                 ptr_3[idx][0] * ptr_3[idx][0] + ptr_3[idx][1] * ptr_3[idx][1]);
+			for (ptrdiff_t k = 1; k < info.INDEX_RIGHT; ++k) {
 				++idx;
-				energy += (	ptr_1[idx][0] * ptr_1[idx][0] + ptr_1[idx][1] * ptr_1[idx][1] +
-							ptr_2[idx][0] * ptr_2[idx][0] + ptr_2[idx][1] * ptr_2[idx][1] +
-							ptr_3[idx][0] * ptr_3[idx][0] + ptr_3[idx][1] * ptr_3[idx][1]);
+				energy += (ptr_1[idx][0] * ptr_1[idx][0] + ptr_1[idx][1] * ptr_1[idx][1] +
+				           ptr_2[idx][0] * ptr_2[idx][0] + ptr_2[idx][1] * ptr_2[idx][1] +
+				           ptr_3[idx][0] * ptr_3[idx][0] + ptr_3[idx][1] * ptr_3[idx][1]);
 			}
 		}
 	}
@@ -171,12 +171,12 @@ double field_energy_fourie(	const fftw_complex *ptr_1,
 }
 
 void correction(fftw_complex *result_ptr_1, fftw_complex *result_ptr_2, fftw_complex *result_ptr_3,
-				fftw_complex *tmp_ptr, const Task_features& info) {
+                fftw_complex *tmp_ptr, const Task_features& info) {
 	divergence(tmp_ptr, result_ptr_1, result_ptr_2, result_ptr_3, info);
 	double coef_1, coef_2, coef_3;
 	for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
 		for (ptrdiff_t j = 0; j < info.N; ++j) {
-			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) { //  [0, N/2 + 1)
+			for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) {
 				const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
 				coef_1 = info.indeces[info.local_0_start + i];
 				coef_2 = info.indeces[j];
@@ -200,30 +200,6 @@ void correction(fftw_complex *result_ptr_1, fftw_complex *result_ptr_2, fftw_com
 	return;
 }
 
-/*
-void output_of_large_abs_value_fourie_coef(	const fftw_complex *ptr,
-											const Task_features& info,
-											const double abs_value) {
-	for (int rnk = 0; rnk < info.size; ++rnk) {
-		MPI_Barrier(MPI_COMM_WORLD);
-		if (info.rank == rnk) {
-			for (ptrdiff_t i = 0; i < info.local_n0; ++i) {
-				for (ptrdiff_t j = 0; j < info.N; ++j) {
-					for (ptrdiff_t k = 0; k < info.INDEX_RIGHT; ++k) {
-						const ptrdiff_t idx = (i * info.N + j) * (info.N / 2 + 1) + k;
-						if (std::sqrt(ptr[idx][0] * ptr[idx][0] + ptr[idx][1] * ptr[idx][1]) > abs_value) {
-							std::cout << "rank: " << rnk << " , idx: " << idx << " , value: " << ptr[idx][0] << ' ' << ptr[idx][1] << '\n';
-						}
-					}
-				}
-			}
-		}
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
-	return;
-}
-*/
-
 void fill_real(double* vec[3], const Task_features& info) {
 	std::vector<std::function<double(const double, const double, const double)>> fill_real_functions;
 	fill_real_functions.push_back([](const double x1, const double x2, const double x3) {
@@ -245,7 +221,6 @@ void fill_real(double* vec[3], const Task_features& info) {
 					const double cur_z = info.RANGE_RIGHT * k / info.N;
 					vec[q][(i * info.N + j) * (2 * (info.N / 2 + 1)) + k] = fill_real_functions[q](cur_x, cur_y, cur_z);
 				}
-
 
 	return;
 }
@@ -335,7 +310,7 @@ void test_derivative(const Task_features& info) {
 
 		if (info.rank == 0) {
 			if (num == 0) {
-				std::cout << "max deviation from correct ans(derivetive) for var:" << '\n';	
+				std::cout << "max deviation from correct ans(derivetive) for var:" << '\n';
 			}
 			std::cout << num + 1 << " -- " << max_diff << '\n';
 		}
@@ -425,7 +400,6 @@ void test_rotor(const Task_features& info) {
 					const double cur_y = info.RANGE_RIGHT * j / info.N;
 					const double cur_z = info.RANGE_RIGHT * k / info.N;
 					max_diff = std::max(max_diff, std::abs(rotor_r[q][(i * N + j) * (2 * (N / 2 + 1)) + k] - rotor_functions[q](cur_x, cur_y, cur_z)));
-					
 				}
 			}
 		}
@@ -438,7 +412,7 @@ void test_rotor(const Task_features& info) {
 	}
 
 	if (info.rank == 0) {
-		std::cout << "max deviation from correct ans(rot):" << '\n';	
+		std::cout << "max deviation from correct ans(rot):" << '\n';
 		std::cout << max_diff << '\n';
 	}
 
@@ -531,9 +505,9 @@ void test_divergence(const Task_features& info) {
 					vec_r[0][(i * N + j) * (2 * (N / 2 + 1)) + k] +
 					vec_r[1][(i * N + j) * (2 * (N / 2 + 1)) + k] +
 					vec_r[2][(i * N + j) * (2 * (N / 2 + 1)) + k] -
-					(	fill_real_derived_function[0][0](cur_x, cur_y, cur_z) +
-						fill_real_derived_function[1][1](cur_x, cur_y, cur_z) +
-						fill_real_derived_function[2][2](cur_x, cur_y, cur_z))));
+					(fill_real_derived_function[0][0](cur_x, cur_y, cur_z) +
+					 fill_real_derived_function[1][1](cur_x, cur_y, cur_z) +
+					 fill_real_derived_function[2][2](cur_x, cur_y, cur_z))));
 			}
 		}
 	}
@@ -545,7 +519,7 @@ void test_divergence(const Task_features& info) {
 	}
 
 	if (info.rank == 0) {
-		std::cout << "max deviation from correct ans(div):" << '\n';	
+		std::cout << "max deviation from correct ans(div):" << '\n';
 		std::cout << max_diff << '\n';
 	}
 

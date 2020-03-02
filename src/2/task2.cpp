@@ -15,10 +15,10 @@ const double PI_PLUS_PI = std::acos(-1) * 2;
 
 int main(int argc, char *argv[]) {
 
-	const int iters 	= std::atoi(argv[1]);
-	const ptrdiff_t N 	= std::atoi(argv[2]);
-	const double	tau = std::strtod(argv[3], nullptr),
-					eta = std::strtod(argv[4], nullptr);
+	const int iters     = std::atoi(argv[1]);
+	const ptrdiff_t N   = std::atoi(argv[2]);
+	const double    tau = std::strtod(argv[3], nullptr),
+	                eta = std::strtod(argv[4], nullptr);
 	int rank, size;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -29,10 +29,10 @@ int main(int argc, char *argv[]) {
 	alloc_local = fftw_mpi_local_size_3d(N, N, N / 2 + 1, MPI_COMM_WORLD, &local_dim0_size, &local_dim0_start);
 	std::ofstream ofile("file_w_energy.data");
 	{
-		Field 	magnetic_field	{Modes::ALL_COMPONENTS, 		N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
-				velocity_field	{Modes::ALL_REAL_COMPONENTS, 	N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
-				rotor_field		{Modes::ALL_COMPONENTS,			N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
-				auxiliary_field	{Modes::ONE_COMPLEX_COMPONENT, 	N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size};
+		Field   magnetic_field  {Modes::ALL_COMPONENTS,         N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
+		        velocity_field  {Modes::ALL_REAL_COMPONENTS,    N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
+		        rotor_field     {Modes::ALL_COMPONENTS,         N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size},
+		        auxiliary_field {Modes::ONE_COMPLEX_COMPONENT,  N, tau, eta, 0, PI_PLUS_PI, alloc_local, local_dim0_size, local_dim0_start, rank, size};
 
 		magnetic_field.fill_magnetic_field();
 		velocity_field.fill_velocity_field();
